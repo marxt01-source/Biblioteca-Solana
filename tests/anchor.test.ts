@@ -1,34 +1,44 @@
 // No imports needed: web3, anchor, pg and more are globally available
 
-describe("Test", () => {
-  it("initialize", async () => {
-    // Generate keypair for the new account
-    const newAccountKp = new web3.Keypair();
+describe("Cafeteria Escolar", () => {
 
-    // Send transaction
-    const data = new BN(42);
-    const txHash = await pg.program.methods
-      .initialize(data)
-      .accounts({
-        newAccount: newAccountKp.publicKey,
-        signer: pg.wallet.publicKey,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .signers([newAccountKp])
-      .rpc();
-    console.log(`Use 'solana confirm -v ${txHash}' to see the logs`);
+  it("Crear cafeteria", async () => {
 
-    // Confirm transaction
-    await pg.connection.confirmTransaction(txHash);
+    // Nombre de la cafeteria
+    const nombreCafeteria = "Cafeteria Escolar";
 
-    // Fetch the created account
-    const newAccount = await pg.program.account.newAccount.fetch(
-      newAccountKp.publicKey
+    // Derivar la PDA de la cafeteria
+    const [cafeteriaPda] = await web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("cafeteria"),
+        pg.wallet.publicKey.toBuffer()
+      ],
+      pg.program.programId
     );
 
-    console.log("On-chain data is:", newAccount.data.toString());
+    // Enviar transaccion para crear la cafeteria
+    const txHash = await pg.program.methods
+      .crearCafeteria(nombreCafeteria)
+      .accounts({
+        owner: pg.wallet.publicKey,
+        cafeteria: cafeteriaPda,
+        systemProgram: web3.SystemProgram.programId
+      })
+      .rpc();
 
-    // Check whether the data on-chain is equal to local 'data'
-    assert(data.eq(newAccount.data));
+    console.log(`Use 'solana confirm -v ${txHash}' to see the logs`);
+
+    // Confirmar transaccion
+    await pg.connection.confirmTransaction(txHash);
+
+    // Obtener la cuenta creada en blockchain
+    const cafeteria = await pg.program.account.cafeteria.fetch(cafeteriaPda);
+
+    console.log("Datos de la cafeteria en blockchain:", cafeteria);
+
+    // Verificar que el nombre se guardo correctamente
+    assert.equal(cafeteria.nombre, nombreCafeteria);
+
   });
+
 });
